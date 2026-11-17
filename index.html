@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>キャンディ盤面くらべ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+/* レイアウト: 左右に7×7盤面を並べ、下に1つの大きな回すボタン。スマホでも左右並びのまま。単一のダーク基調（ゲーム画面として固定） */
+:root{
+  --bg:#141a26; --panel:#1d2536; --line:#2f3a52; --fg:#eef1f7; --muted:#9aa6bf;
+  --rand:#ff8a5c; --pseudo:#5cd6c0; --win:#ffe066;
+  --c0:#ff3b55; --c1:#ffc21a; --c2:#3fd65a; --c3:#2f8cff; --c4:#a45cff; --c5:#ff7ad1; --c6:#3ee6e6;
+  --display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN",system-ui,sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--body);font-size:15px;line-height:1.7;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(22px,4vw,32px);margin:0;line-height:1.25}
+.lead{margin:6px 0 0;font-size:clamp(14px,2.2vw,17px);max-width:60ch}
+.lead b{color:var(--win)}
+.boards{display:grid;grid-template-columns:1fr 1fr;gap:clamp(10px,3vw,28px)}
+.boardbox{display:flex;flex-direction:column;gap:8px;min-width:0}
+.bhead{display:flex;flex-direction:column;gap:0}
+.bname{font-family:var(--display);font-weight:800;font-size:clamp(15px,2.6vw,20px);line-height:1.3}
+.bsub{font-size:clamp(11px,1.8vw,13px);color:var(--muted)}
+.boardbox[data-m="rand"] .bname{color:var(--rand)}
+.boardbox[data-m="pseudo"] .bname{color:var(--pseudo)}
+.board{position:relative;width:100%;aspect-ratio:1;max-width:100%;background:#0e131d;border-radius:12px;border:2px solid var(--line);overflow:hidden;--gap:clamp(1px,.4vw,3px)}
+.boardbox[data-m="rand"] .board{border-color:color-mix(in srgb,var(--rand) 45%,var(--line))}
+.boardbox[data-m="pseudo"] .board{border-color:color-mix(in srgb,var(--pseudo) 45%,var(--line))}
+.cell-bg{position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(7,1fr)}
+.cell-bg div{border:1px solid rgba(255,255,255,.035)}
+.tile{position:absolute;left:0;top:0;width:calc(100%/7);height:calc(100%/7);padding:var(--gap);transition:transform .38s cubic-bezier(.5,0,.75,1)}
+.tile .in{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--sc);transition:transform .2s,opacity .2s}
+.tile svg{width:92%;height:92%;display:block;filter:drop-shadow(0 2px 0 rgba(0,0,0,.45))}
+.tile.pop .in{transform:scale(0);opacity:0}
+.shownear .tile.near{background:color-mix(in srgb,var(--sc) 18%,transparent);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--sc) 70%,transparent);border-radius:8px}
+.tally{display:flex;justify-content:space-between;gap:6px;font-size:clamp(12px,1.9vw,14px);font-variant-numeric:tabular-nums;flex-wrap:wrap}
+.tally .last{color:var(--muted)}
+.tally b{font-family:var(--display);font-size:1.15em}
+.controls{display:flex;flex-direction:column;align-items:center;gap:10px}
+button{font-family:var(--display);font-weight:800;border:0;border-radius:14px;cursor:pointer;color:#141a26;line-height:1.3;transition:transform .1s,filter .15s}
+button:hover{filter:brightness(1.08)}
+button:active{transform:translateY(2px)}
+button:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+button:disabled{filter:grayscale(.7) brightness(.6);cursor:default}
+#bSpin{background:var(--win);font-size:20px;padding:14px 48px;width:min(100%,360px)}
+.subbtns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.ghost{background:var(--panel);color:var(--fg);font-size:14px;padding:9px 16px;border:1px solid var(--line)}
+.opts{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;color:var(--muted);font-size:14px}
+.opts label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.opts input{accent-color:var(--pseudo);width:18px;height:18px}
+.note{background:var(--panel);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.note p{margin:0}
+.note .k{font-family:var(--display);font-weight:800}
+.note .r{color:var(--rand)} .note .p{color:var(--pseudo)}
+details.compare{background:var(--panel);border-radius:14px;padding:12px 16px}
+details.compare summary{cursor:pointer;font-family:var(--display);font-weight:800;font-size:15px}
+.cmpbody{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.metric{display:flex;flex-direction:column;gap:4px}
+.metric .name{font-weight:700;font-size:13px}
+.bar{display:grid;grid-template-columns:7.5em minmax(0,1fr) 4em;align-items:center;gap:8px;font-size:12px;font-variant-numeric:tabular-nums}
+.bar .track{height:12px;background:#0e131d;border-radius:6px;overflow:hidden}
+.bar .fill{height:100%;border-radius:6px;width:0;transition:width .6s}
+.bar .val{text-align:right;font-weight:700}
+.cmpsub{margin:0;color:var(--muted);font-size:12px}
+@media (prefers-reduced-motion:reduce){.tile,.tile .in,.bar .fill{transition:none}}
+</style>
+</head><body>
+
+<div class="wrap">
+  <header>
+    <h1>キャンディ盤面くらべ</h1>
+    <p class="lead">左右の台は<b>揃う確率も、続けて消える確率も同じ（どちらも約30%）</b>です。違うのは図柄の並び方だけ。同時に回して、どっちが「もう少しで揃いそう」に見えるか比べてください。</p>
+  </header>
+
+  <div class="boards">
+    <section class="boardbox" data-m="rand" aria-label="完全ランダムの盤面">
+      <div class="bhead"><span class="bname">完全ランダム</span><span class="bsub">1マスずつバラバラに抽選</span></div>
+      <div class="board" id="boardR"><div class="cell-bg"></div></div>
+      <div class="tally"><span><b id="hitR">0</b> / <span id="spinR">0</span>回 揃った</span><span class="last" id="lastR">　</span></div>
+    </section>
+    <section class="boardbox" data-m="pseudo" aria-label="設計されたランダムの盤面">
+      <div class="bhead"><span class="bname">設計されたランダム</span><span class="bsub">同じ図柄が寄りやすい</span></div>
+      <div class="board" id="boardP"><div class="cell-bg"></div></div>
+      <div class="tally"><span><b id="hitP">0</b> / <span id="spinP">0</span>回 揃った</span><span class="last" id="lastP">　</span></div>
+    </section>
+  </div>
+
+  <div class="controls">
+    <button id="bSpin">同時に回す</button>
+    <div class="subbtns">
+      <button class="ghost" id="b10">10回続けて回す</button>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="optNear"> 惜しい塊（3〜4個）を枠で囲む</label>
+      <label><input type="checkbox" id="optFast"> 早送り</label>
+    </div>
+  </div>
+
+  <div class="note">
+    <p><span class="k r">完全ランダム</span>：1マスずつ独立に抽選しただけの盤面。散らばりすぎて「どうやって揃うの？」に見える。</p>
+    <p><span class="k p">設計されたランダム</span>：抽選は本物のまま、同じ図柄が近くに寄りやすいように並べ方を設計したもの。多くの実際の台はこちらの作り方です。</p>
+    <p>どちらも出た結果をそのまま見せていて、後から描き直してはいません。揃う確率は同じでも、見え方でここまで印象が変わります。</p>
+  </div>
+
+  <details class="compare">
+    <summary>数字で確かめる（5,000回ずつ）</summary>
+    <div class="cmpbody">
+      <div class="metric">
+        <span class="name">最初の盤面で揃う（5個以上つながる）確率</span>
+        <div class="bar"><span>完全ランダム</span><div class="track"><div class="fill" id="fWinR" style="background:var(--rand)"></div></div><span class="val" id="vWinR">–</span></div>
+        <div class="bar"><span>設計されたランダム</span><div class="track"><div class="fill" id="fWinP" style="background:var(--pseudo)"></div></div><span class="val" id="vWinP">–</span></div>
+      </div>
+      <div class="metric">
+        <span class="name">惜しい塊（3〜4個のかたまり）の数／1盤面</span>
+        <div class="bar"><span>完全ランダム</span><div class="track"><div class="fill" id="fNearR" style="background:var(--rand)"></div></div><span class="val" id="vNearR">–</span></div>
+        <div class="bar"><span>設計されたランダム</span><div class="track"><div class="fill" id="fNearP" style="background:var(--pseudo)"></div></div><span class="val" id="vNearP">–</span></div>
+      </div>
+      <div class="metric">
+        <span class="name">ぽつんと孤立した図柄の数／1盤面</span>
+        <div class="bar"><span>完全ランダム</span><div class="track"><div class="fill" id="fSoloR" style="background:var(--rand)"></div></div><span class="val" id="vSoloR">–</span></div>
+        <div class="bar"><span>設計されたランダム</span><div class="track"><div class="fill" id="fSoloP" style="background:var(--pseudo)"></div></div><span class="val" id="vSoloP">–</span></div>
+      </div>
+      <p class="cmpsub">10万回ずつのシミュレーションで、どちらも「揃う確率 約30%」「揃ったあと続けて消える確率 約30%」になるように調整しています。</p>
+    </div>
+  </details>
+</div>
+
+<script>
+(function(){
+const N=7,S=7;
+const ri=n=>Math.floor(Math.random()*n);
+const nb=(r,c)=>[[r-1,c],[r+1,c],[r,c-1],[r,c+1]].filter(([a,b])=>a>=0&&a<N&&b>=0&&b<N);
+
+// 形と色の両方で見分けられる図柄（ハート・丸・三角・四角・ひし形・星・月）
+const GLYPH=[
+ '<svg viewBox="0 0 100 100"><path d="M50 88 C18 64 6 48 6 32 C6 18 17 8 30 8 C40 8 46 14 50 22 C54 14 60 8 70 8 C83 8 94 18 94 32 C94 48 82 64 50 88Z" fill="currentColor"/><path d="M20 30 Q22 18 32 17" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="7" stroke-linecap="round"/></svg>',
+ '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="currentColor"/><circle cx="50" cy="50" r="22" fill="none" stroke="#fff" stroke-opacity=".35" stroke-width="7"/><path d="M24 36 Q30 22 44 18" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="7" stroke-linecap="round"/></svg>',
+ '<svg viewBox="0 0 100 100"><path d="M50 8 L94 88 L6 88 Z" fill="currentColor" stroke="currentColor" stroke-width="8" stroke-linejoin="round"/><path d="M42 36 L30 60" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="7" stroke-linecap="round"/></svg>',
+ '<svg viewBox="0 0 100 100"><rect x="10" y="10" width="80" height="80" rx="14" fill="currentColor"/><rect x="28" y="28" width="44" height="44" rx="6" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="6"/><path d="M22 40 L22 24 L38 24" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ '<svg viewBox="0 0 100 100"><path d="M50 4 L94 50 L50 96 L6 50 Z" fill="currentColor" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/><path d="M50 4 L50 96 M6 50 L94 50" stroke="#000" stroke-opacity=".15" stroke-width="4"/><path d="M24 44 L44 22" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="7" stroke-linecap="round"/></svg>',
+ '<svg viewBox="0 0 100 100"><path d="M50 6 L62 36 L94 38 L69 59 L78 92 L50 73 L22 92 L31 59 L6 38 L38 36 Z" fill="currentColor" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/><path d="M40 42 L46 30" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="7" stroke-linecap="round"/></svg>',
+ '<svg viewBox="0 0 100 100"><path d="M62 6 A44 44 0 1 0 94 70 A34 34 0 1 1 62 6 Z" fill="currentColor"/><path d="M26 34 Q30 24 38 19" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="7" stroke-linecap="round"/></svg>'
+];
+
+/* ---- 抽選 ---- */
+// 調整値はシミュレーション（各10万回）で、どちらも「揃う確率 約30%」「揃ったあと続けて消える確率 約30%」になるように決めた
+// 完全ランダム：1マスずつ独立に抽選。図柄ごとの出やすさに少し差をつけている（落ちてくる図柄の方が差が大きい）
+function weighted(q){const w=[...Array(S)].map((_,k)=>Math.pow(q,k)),t=w.reduce((a,b)=>a+b);let s=0;const cum=w.map(x=>s+=x/t);
+  return ()=>{const u=Math.random();for(let k=0;k<S;k++)if(u<cum[k])return k;return S-1;};}
+const pickStart=weighted(0.92), pickRefill=weighted(0.54);
+function genRandom(){return Array.from({length:N},()=>Array.from({length:N},pickStart));}
+// 設計されたランダム：1〜4マスの塊（1個も多め）を作り、隣と同じ図柄はなるべく避ける（＝つながる手前で止まる）
+const SIZES=[1,1,1,2,2,2,3,3,4];
+const AVOID_START=0.872, AVOID_REFILL=0.665;
+function genPseudo(){return blobFill(Array.from({length:N},()=>Array(N).fill(-1)),AVOID_START);}
+// 空きマス(-1)だけを塊で埋める
+function blobFill(b,AVOID){
+  const order=[];for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(b[r][c]<0)order.push([r,c]);
+  for(let i=order.length-1;i>0;i--){const j=ri(i+1);[order[i],order[j]]=[order[j],order[i]];}
+  for(const [r,c] of order){
+    if(b[r][c]>=0)continue;
+    const size=SIZES[ri(SIZES.length)];
+    const cells=[[r,c]],set=new Set([r*N+c]);
+    while(cells.length<size){
+      const fr=[];for(const [a,bb] of cells)for(const [x,y] of nb(a,bb))if(b[x][y]<0&&!set.has(x*N+y))fr.push([x,y]);
+      if(!fr.length)break;const p=fr[ri(fr.length)];cells.push(p);set.add(p[0]*N+p[1]);
+    }
+    const adj=new Set();for(const [a,bb] of cells)for(const [x,y] of nb(a,bb))if(b[x][y]>=0&&!set.has(x*N+y))adj.add(b[x][y]);
+    let s=ri(S);
+    if(Math.random()<AVOID){const ok=[...Array(S).keys()].filter(k=>!adj.has(k));if(ok.length)s=ok[ri(ok.length)];}
+    for(const [a,bb] of cells)b[a][bb]=s;
+  }
+  return b;
+}
+function clusters(get){
+  const seen=new Set(),out=[];
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){
+    const s=get(r,c);if(s<0||seen.has(r*N+c))continue;
+    const st=[[r,c]],cells=[];seen.add(r*N+c);
+    while(st.length){const [a,b]=st.pop();cells.push([a,b]);for(const [x,y] of nb(a,b))if(!seen.has(x*N+y)&&get(x,y)===s){seen.add(x*N+y);st.push([x,y]);}}
+    out.push(cells);
+  }
+  return out;
+}
+
+/* ---- 盤面 ---- */
+const fast=()=>document.getElementById('optFast').checked;
+const wait=ms=>new Promise(r=>setTimeout(r,fast()?ms*0.35:ms));
+
+function makeBoard(el,mode,ids){
+  const bg=el.querySelector('.cell-bg');for(let i=0;i<N*N;i++)bg.appendChild(document.createElement('div'));
+  const B={el,mode,grid:Array.from({length:N},()=>Array(N).fill(null)),spins:0,hits:0};
+  const place=t=>{t.el.style.transform=`translate(${t.c*100}%,${t.r*100}%)`;};
+  function makeTile(sym,r,c,fromRow){
+    const d=document.createElement('div');d.className='tile';
+    d.style.setProperty('--sc',`var(--c${sym})`);
+    d.innerHTML=`<div class="in">${GLYPH[sym]}</div>`;
+    d.style.transition='none';
+    d.style.transform=`translate(${c*100}%,${fromRow*100}%)`;
+    el.appendChild(d);
+    return {sym,r,c,el:d};
+  }
+  function settle(list,stagger){
+    void el.offsetHeight;
+    for(const t of list){t.el.style.transition='';t.el.style.transitionDelay=stagger?`${(fast()?0.35:1)*t.c*28}ms`:'0ms';place(t);}
+  }
+  function markNear(){
+    for(let r=0;r<N;r++)for(let c=0;c<N;c++)B.grid[r][c]&&B.grid[r][c].el.classList.remove('near');
+    for(const cl of clusters((r,c)=>B.grid[r][c]?B.grid[r][c].sym:-1))
+      if(cl.length>=3&&cl.length<=4)for(const [r,c] of cl)B.grid[r][c].el.classList.add('near');
+  }
+  B.init=function(){
+    const b=mode==='rand'?genRandom():genPseudo();
+    for(let r=0;r<N;r++)for(let c=0;c<N;c++)B.grid[r][c]=makeTile(b[r][c],r,c,r);
+    markNear();
+  };
+  B.spin=async function(){
+    document.getElementById(ids.last).textContent='　';
+    const old=[];for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(B.grid[r][c])old.push(B.grid[r][c]);
+    for(const t of old){t.el.style.transitionDelay=`${t.c*20}ms`;t.el.style.transform=`translate(${t.c*100}%,${(t.r+N)*100}%)`;}
+    await wait(old.length?360:0);
+    old.forEach(t=>t.el.remove());
+    const b=mode==='rand'?genRandom():genPseudo();
+    const fresh=[];
+    for(let r=0;r<N;r++)for(let c=0;c<N;c++){const t=makeTile(b[r][c],r,c,r-N);B.grid[r][c]=t;fresh.push(t);}
+    settle(fresh,true);
+    await wait(620);
+    markNear();
+    let chain=0,cleared=0;
+    while(true){
+      const wins=clusters((r,c)=>B.grid[r][c].sym).filter(cl=>cl.length>=5);
+      if(!wins.length)break;
+      chain++;
+      await wait(350);
+      for(const cl of wins)for(const [r,c] of cl){const t=B.grid[r][c];t.el.classList.add('pop');cleared++;setTimeout(()=>t.el.remove(),220);B.grid[r][c]=null;}
+      await wait(240);
+      const moved=[],emptyTop=Array(N).fill(0);
+      for(let c=0;c<N;c++){
+        let w=N-1;
+        for(let r=N-1;r>=0;r--){if(B.grid[r][c]){const t=B.grid[r][c];if(r!==w){B.grid[w][c]=t;B.grid[r][c]=null;t.r=w;moved.push(t);}w--;}}
+        emptyTop[c]=w+1;
+      }
+      // 空いたマスの図柄を決める（完全ランダムは1マスずつ、設計されたランダムは塊で）
+      const syms=B.grid.map(row=>row.map(t=>t?t.sym:-1));
+      if(mode==='rand'){for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(syms[r][c]<0)syms[r][c]=pickRefill();}
+      else blobFill(syms,AVOID_REFILL);
+      for(let c=0;c<N;c++)for(let r=emptyTop[c]-1;r>=0;r--){const t=makeTile(syms[r][c],r,c,r-emptyTop[c]);B.grid[r][c]=t;moved.push(t);}
+      settle(moved,false);
+      await wait(480);
+      markNear();
+    }
+    B.spins++;if(chain>0)B.hits++;
+    document.getElementById(ids.spin).textContent=B.spins;
+    document.getElementById(ids.hit).textContent=B.hits;
+    document.getElementById(ids.last).textContent=chain===0?'はずれ':(chain===1?`${cleared}個消えた`:`${chain}連鎖・${cleared}個`);
+  };
+  return B;
+}
+
+const R=makeBoard(document.getElementById('boardR'),'rand',{spin:'spinR',hit:'hitR',last:'lastR'});
+const P=makeBoard(document.getElementById('boardP'),'pseudo',{spin:'spinP',hit:'hitP',last:'lastP'});
+R.init();P.init();
+
+let busy=false;
+const btns=['bSpin','b10'].map(id=>document.getElementById(id));
+async function run(times){
+  if(busy)return;busy=true;btns.forEach(b=>b.disabled=true);
+  for(let i=0;i<times;i++){await Promise.all([R.spin(),P.spin()]);if(i<times-1)await wait(500);}
+  busy=false;btns.forEach(b=>b.disabled=false);
+}
+document.getElementById('bSpin').onclick=()=>run(1);
+document.getElementById('b10').onclick=()=>run(10);
+document.getElementById('optNear').onchange=e=>document.querySelector('.boards').classList.toggle('shownear',e.target.checked);
+
+/* ---- 数字で確かめる ---- */
+function measure(gen,n){
+  let win=0,near=0,solo=0;
+  for(let i=0;i<n;i++){const b=gen();const cs=clusters((r,c)=>b[r][c]).map(x=>x.length);
+    if(cs.some(x=>x>=5))win++;near+=cs.filter(x=>x>=3&&x<=4).length;solo+=cs.filter(x=>x===1).length;}
+  return {win:win/n,near:near/n,solo:solo/n};
+}
+function compare(){
+  const n=5000,a=measure(genRandom,n),b=measure(genPseudo,n);
+  const set=(id,v,max,txt)=>{document.getElementById('f'+id).style.width=Math.max(2,v/max*100)+'%';document.getElementById('v'+id).textContent=txt;};
+  set('WinR',a.win,1,Math.round(a.win*100)+'%');set('WinP',b.win,1,Math.round(b.win*100)+'%');
+  const mN=Math.max(a.near,b.near),mS=Math.max(a.solo,b.solo);
+  set('NearR',a.near,mN,a.near.toFixed(1)+'個');set('NearP',b.near,mN,b.near.toFixed(1)+'個');
+  set('SoloR',a.solo,mS,a.solo.toFixed(1)+'個');set('SoloP',b.solo,mS,b.solo.toFixed(1)+'個');
+}
+setTimeout(compare,30);
+})();
+</script>
+</body></html>
